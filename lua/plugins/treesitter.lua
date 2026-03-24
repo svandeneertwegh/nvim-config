@@ -20,6 +20,7 @@ return {
           "bash",
           "markdown",
           "markdown_inline",
+          "htmldjango",
         },
         highlight = { enable = true },
         indent = { enable = true },
