@@ -9,7 +9,10 @@ return {
   },
 
   -- Icons
-  { "nvim-tree/nvim-web-devicons", lazy = true },
+  {
+    "nvim-tree/nvim-web-devicons",
+    lazy = true,
+  },
 
   -- File explorer
   {
@@ -32,26 +35,27 @@ return {
     end,
   },
 
--- Telescope
-{
-  "nvim-telescope/telescope.nvim",
-  dependencies = {
-    "nvim-lua/plenary.nvim",
-    { "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
+  -- Telescope
+  {
+    "nvim-telescope/telescope.nvim",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      { "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
+    },
+    config = function()
+      local telescope = require("telescope")
+      telescope.setup({})
+      pcall(telescope.load_extension, "fzf")
+    end,
   },
-  config = function()
-    local telescope = require("telescope")
-    telescope.setup({})
-    pcall(telescope.load_extension, "fzf")
-  end,
-},
+
   -- Mason
   {
     "mason-org/mason.nvim",
     opts = {},
   },
 
-  -- LSP installer bridge
+  -- Mason bridge
   {
     "mason-org/mason-lspconfig.nvim",
     dependencies = {
@@ -62,10 +66,12 @@ return {
       require("mason-lspconfig").setup({
         ensure_installed = {
           "lua_ls",
-          "pyright",
-          "ts_ls",
+          "basedpyright",
+          "ruff",
+          "vtsls",
           "html",
           "cssls",
+          "tailwindcss",
           "jsonls",
           "yamlls",
           "bashls",
@@ -74,41 +80,55 @@ return {
     end,
   },
 
-  -- LSP config
+  -- LSP
   {
     "neovim/nvim-lspconfig",
     config = function()
       local capabilities = require("cmp_nvim_lsp").default_capabilities()
-      local servers = {
-	"lua_ls",
-	  "pyright",
-	  "ts_ls",
-	  "html",
-	  "cssls",
-	  "jsonls",
-	  "yamlls",
-	  "bashls",
-	}
 
-	for _, server in ipairs(servers) do
-	  vim.lsp.config(server, {
-	    capabilities = capabilities,
-	  })
-	  vim.lsp.enable(server)
-	end
-      vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function(event)
-          local opts = { buffer = event.buf }
-          vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-          vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
-          vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-          vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-          vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-          vim.keymap.set("n", "<leader>fd", vim.diagnostic.open_float, opts)
-          vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, opts)
-          vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
-        end,
-      })
+      local function on_attach(_, bufnr)
+        local opts = { buffer = bufnr }
+
+        vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+        vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
+        vim.keymap.set("n", "gi", vim.lsp.buf.implementation, opts)
+        vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+        vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+        vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+        vim.keymap.set("n", "<leader>fd", vim.diagnostic.open_float, opts)
+        vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, opts)
+        vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
+      end
+
+      local servers = {
+        lua_ls = {},
+        basedpyright = {},
+        ruff = {},
+        vtsls = {},
+        html = {},
+        cssls = {},
+        jsonls = {},
+        yamlls = {},
+        bashls = {},
+        tailwindcss = {
+          filetypes = {
+            "html",
+            "css",
+            "scss",
+            "javascript",
+            "javascriptreact",
+            "typescript",
+            "typescriptreact",
+          },
+        },
+      }
+
+      for server, config in pairs(servers) do
+        config.capabilities = capabilities
+        config.on_attach = on_attach
+        vim.lsp.config(server, config)
+        vim.lsp.enable(server)
+      end
     end,
   },
 
@@ -124,6 +144,7 @@ return {
     config = function()
       local cmp = require("cmp")
       local luasnip = require("luasnip")
+
       require("luasnip.loaders.from_vscode").lazy_load()
 
       cmp.setup({
@@ -152,13 +173,17 @@ return {
     opts = {
       formatters_by_ft = {
         lua = { "stylua" },
-        python = { "black" },
-        javascript = { "prettier" },
-        typescript = { "prettier" },
-        html = { "prettier" },
-        css = { "prettier" },
-        json = { "prettier" },
-        yaml = { "prettier" },
+        python = { "ruff_format", "black" },
+        javascript = { "prettierd", "prettier" },
+        javascriptreact = { "prettierd", "prettier" },
+        typescript = { "prettierd", "prettier" },
+        typescriptreact = { "prettierd", "prettier" },
+        json = { "prettierd", "prettier" },
+        html = { "prettierd", "prettier" },
+        css = { "prettierd", "prettier" },
+        scss = { "prettierd", "prettier" },
+        yaml = { "prettierd", "prettier" },
+        markdown = { "prettierd", "prettier" },
       },
       format_on_save = {
         timeout_ms = 1000,
@@ -172,10 +197,13 @@ return {
     "mfussenegger/nvim-lint",
     config = function()
       local lint = require("lint")
+
       lint.linters_by_ft = {
         python = { "ruff" },
         javascript = { "eslint_d" },
+        javascriptreact = { "eslint_d" },
         typescript = { "eslint_d" },
+        typescriptreact = { "eslint_d" },
       }
 
       vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
@@ -233,7 +261,7 @@ return {
     opts = {},
   },
 
-  -- LazyGit integration
+  -- LazyGit
   {
     "kdheepak/lazygit.nvim",
     dependencies = { "nvim-lua/plenary.nvim" },
