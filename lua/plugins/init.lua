@@ -1,10 +1,10 @@
 return {
   -- Theme
   {
-    "folke/tokyonight.nvim",
+    "loctvl842/monokai-pro.nvim",
     priority = 1000,
     config = function()
-      vim.cmd.colorscheme("tokyonight")
+      vim.cmd.colorscheme("monokai-pro")
     end,
   },
 
